@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1f4f8f">
+<meta name="description" content="Numery dróg i kilometraż w powiecie kętrzyńskim. Twórca: SP4EIV">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>*,*::before,*::after{box-sizing:border-box}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>drogiNKE</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+/* Layout: aplikacja telefoniczna — nagłówek, mapa z pozycją, karta "jesteś na drodze", wyszukiwarka i lista dróg */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --fg:#1b2129; --muted:#5b6673; --line:#d5dbe2;
+  --accent:#1f4f8f; --accent-fg:#ffffff; --route:#e2582b;
+  --dk:#c8102e; --dw:#f2c300; --dw-fg:#111;
+  --good:#2f7d4a; --mid:#b07a0a; --bad:#b3261e;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Source Sans 3","Segoe UI",Roboto,Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161b; --surface:#1b2027; --fg:#e7ebf0; --muted:#9aa5b1; --line:#2c333c;
+  --accent:#6f9fe0; --accent-fg:#0d1117; --route:#ff7a4a; --good:#5fbf80; --mid:#e0b04a; --bad:#f07b72; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161b; --surface:#1b2027; --fg:#e7ebf0; --muted:#9aa5b1; --line:#2c333c;
+  --accent:#6f9fe0; --accent-fg:#0d1117; --route:#ff7a4a; --good:#5fbf80; --mid:#e0b04a; --bad:#f07b72; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.45}
+.wrap{max-width:760px;margin:0 auto;padding-block:14px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+header{display:flex;align-items:center;gap:12px}
+.logo{font-family:var(--display);font-weight:700;font-size:1.05rem;background:#fff;color:#111;border:3px solid #111;border-radius:6px;padding:2px 8px;line-height:1.1}
+h1{font-family:var(--display);font-size:2rem;line-height:1;margin:0;letter-spacing:.01em}
+.sub{color:var(--muted);margin:2px 0 0;font-size:.9rem}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.lbl{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.mapbox{position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--surface)}
+#map{height:46vh;min-height:260px;max-height:520px;width:100%;background:#dfe5ea}
+.mapnote{position:absolute;inset:auto 10px 10px 10px;z-index:1001;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.85rem}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.btn{font:inherit;font-weight:700;font-size:1rem;padding:12px 14px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-fg);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;flex:1 1 auto}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn[disabled]{opacity:.6;cursor:wait}
+.btn.small{font-size:.85rem;padding:7px 10px;flex:0 0 auto;font-weight:600}
+.toggle{display:flex;align-items:center;gap:8px;font-size:.95rem}
+.toggle input{width:20px;height:20px;accent-color:var(--accent)}
+.gpsout{display:flex;flex-direction:column;gap:8px}
+.gpsout:empty{display:none}
+.note{font-size:.88rem;color:var(--muted)}
+.hit{display:flex;gap:12px;align-items:center}
+.hit .txt{min-width:0}
+input[type=search]{width:100%;font:inherit;font-size:1.05rem;padding:12px 14px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
+input:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:.85rem;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
+.chip[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.count{font-size:.85rem;color:var(--muted)}
+.list{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.row{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:center;padding:12px 14px;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row.sel{background:color-mix(in srgb,var(--route) 12%,var(--surface))}
+.row .txt{min-width:0}
+.row .acts{grid-column:2;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.route{font-weight:600}
+.meta{font-size:.85rem;color:var(--muted)}
+.plate{font-family:var(--display);font-weight:700;font-size:1.25rem;line-height:1;min-width:4.2em;text-align:center;padding:6px 8px;border-radius:5px;background:#fff;color:#111;border:2px solid #111;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.plate.dw{background:var(--dw);color:var(--dw-fg)}
+.plate.dk{background:var(--dk);color:#fff;border-color:#fff;box-shadow:0 0 0 2px var(--dk)}
+.plate.other{background:var(--bg);color:var(--fg);border-color:var(--line)}
+.cond{font-size:.8rem;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap;font-variant-numeric:tabular-nums;border:1px solid currentColor}
+.c-good{color:var(--good)} .c-mid{color:var(--mid)} .c-bad{color:var(--bad)} .c-none{color:var(--muted)}
+mark{background:color-mix(in srgb,var(--dw) 55%,transparent);color:inherit;border-radius:2px;padding:0 1px}
+.empty{padding:22px 14px;text-align:center;color:var(--muted)}
+.km{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;margin:2px 0}
+.kmv{font-family:var(--display);font-weight:700;font-size:1.7rem;line-height:1;font-variant-numeric:tabular-nums}
+.kmtag{font-size:.78rem;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid var(--mid);color:var(--mid)}
+.kmtag.cal{border-color:var(--good);color:var(--good)}
+.calform{display:flex;flex-direction:column;gap:6px}
+.calform label{font-size:.9rem;font-weight:600}
+.calform input,#notebox{font:inherit;font-size:1rem;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);flex:1;min-width:0}
+#notebox{width:100%}
+footer{font-size:.8rem;color:var(--muted);display:flex;flex-direction:column;gap:6px;text-align:center}
+footer .author{font-family:var(--display);font-size:1.1rem;color:var(--fg);letter-spacing:.04em}
+#install[hidden]{display:none}
+@media (min-width:560px){.row{grid-template-columns:auto 1fr auto}.row .acts{grid-column:auto;justify-content:flex-end}}
+@media (prefers-reduced-motion:no-preference){.btn,.chip{transition:filter .15s}.btn:hover{filter:brightness(1.08)}}
+
+/* Leaflet — niezbędne style mapy */
+.leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-zoom-box,.leaflet-image-layer,.leaflet-layer{position:absolute;left:0;top:0}
+.leaflet-container{overflow:hidden;-webkit-tap-highlight-color:transparent;font-family:var(--body);font-size:12px}
+.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow{-webkit-user-select:none;user-select:none;-webkit-user-drag:none}
+.leaflet-container img.leaflet-tile,.leaflet-container .leaflet-overlay-pane svg{max-width:none!important;max-height:none!important}
+.leaflet-container img.leaflet-tile{mix-blend-mode:plus-lighter}
+.leaflet-tile{filter:inherit;visibility:hidden}.leaflet-tile-loaded{visibility:inherit}
+.leaflet-zoom-box{width:0;height:0;box-sizing:border-box;z-index:800}
+.leaflet-pane{z-index:400}.leaflet-tile-pane{z-index:200}.leaflet-overlay-pane{z-index:400}.leaflet-shadow-pane{z-index:500}.leaflet-marker-pane{z-index:600}.leaflet-tooltip-pane{z-index:650}.leaflet-popup-pane{z-index:700}
+.leaflet-map-pane canvas{z-index:100}.leaflet-map-pane svg{z-index:200}
+.leaflet-control{position:relative;z-index:800;pointer-events:auto;float:left;clear:both}
+.leaflet-top,.leaflet-bottom{position:absolute;z-index:1000;pointer-events:none}
+.leaflet-top{top:0}.leaflet-right{right:0}.leaflet-bottom{bottom:0}.leaflet-left{left:0}
+.leaflet-right .leaflet-control{float:right}
+.leaflet-top .leaflet-control{margin-top:10px}.leaflet-bottom .leaflet-control{margin-bottom:0}.leaflet-left .leaflet-control{margin-left:10px}.leaflet-right .leaflet-control{margin-right:0}
+.leaflet-zoom-animated{transform-origin:0 0}
+.leaflet-zoom-anim .leaflet-zoom-animated{transition:transform .25s cubic-bezier(0,0,.25,1)}
+.leaflet-zoom-anim .leaflet-tile,.leaflet-pan-anim .leaflet-tile{transition:none}
+.leaflet-zoom-anim .leaflet-zoom-hide{visibility:hidden}
+.leaflet-interactive{cursor:pointer}.leaflet-grab{cursor:grab}.leaflet-dragging .leaflet-grab{cursor:move}
+.leaflet-touch-zoom{touch-action:pan-x pan-y}.leaflet-touch-drag{touch-action:pinch-zoom}.leaflet-touch-drag.leaflet-touch-zoom{touch-action:none}
+.leaflet-bar{box-shadow:0 1px 5px rgba(0,0,0,.35);border-radius:6px;overflow:hidden}
+.leaflet-bar a{display:block;width:36px;height:36px;line-height:36px;text-align:center;background:#fff;color:#111;text-decoration:none;font:700 20px/36px var(--body);border-bottom:1px solid #ccc}
+.leaflet-bar a:last-child{border-bottom:0}
+.leaflet-control-attribution{background:rgba(255,255,255,.85);padding:0 5px;color:#333;font-size:11px}
+.leaflet-control-attribution a{color:#0b5394}
+.leaflet-tooltip{position:absolute;padding:2px 6px;background:#fff;border:2px solid #111;border-radius:4px;color:#111;white-space:nowrap;pointer-events:none;font:700 13px/1.2 var(--display)}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <span class="logo" aria-hidden="true">NKE</span>
+    <div>
+      <h1>drogiNKE</h1>
+      <p class="sub">Numery dróg w powiecie kętrzyńskim</p>
+    </div>
+  </header>
+
+  <div class="mapbox">
+    <div id="map" role="region" aria-label="Mapa"></div>
+    <div class="mapnote" id="mapnote" hidden></div>
+  </div>
+
+  <section class="panel" aria-labelledby="gpsl">
+    <span class="lbl" id="gpsl">Gdzie jestem</span>
+    <div class="btns">
+      <button class="btn" id="gps" type="button">
+        <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3" stroke="currentColor" stroke-width="2"/></svg>
+        Sprawdź drogę z GPS
+      </button>
+    </div>
+    <label class="toggle"><input type="checkbox" id="follow"> Śledź mnie w trakcie jazdy</label>
+    <div class="gpsout" id="gpsout" aria-live="polite"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="ql">
+    <label class="lbl" id="ql" for="q">Miejscowość, ulica lub numer drogi</label>
+    <input type="search" id="q" list="places" placeholder="np. Srokowo, Barciany, 1733N" autocomplete="off">
+    <datalist id="places"></datalist>
+    <div class="chips" role="group" aria-label="Filtr">
+      <button class="chip" type="button" data-f="all" aria-pressed="true">Wszystkie</button>
+      <button class="chip" type="button" data-f="poza" aria-pressed="false">Poza miastami</button>
+      <button class="chip" type="button" data-f="Kętrzyn" aria-pressed="false">Kętrzyn</button>
+      <button class="chip" type="button" data-f="Reszel" aria-pressed="false">Reszel</button>
+      <button class="chip" type="button" data-f="Korsze" aria-pressed="false">Korsze</button>
+    </div>
+  </section>
+
+  <div class="count" id="count"></div>
+  <div class="list" id="list"></div>
+
+  <button class="btn ghost" id="install" type="button" hidden>Zainstaluj drogiNKE na telefonie</button>
+
+  <footer>
+    <span class="author">Twórca: SP4EIV</span>
+    <span>Dane dróg powiatowych: strategia powiatu kętrzyńskiego, tabela ZDP Kętrzyn (czerwiec 2020). Ocena stanu: 5 bardzo dobry … 1 bardzo zły.</span>
+    <span>Mapa i rozpoznawanie drogi: © współtwórcy OpenStreetMap. Początki kilometrażu dróg wojewódzkich: mapa ZDW Olsztyn (12.01.2026). Kilometr jest liczony wzdłuż drogi na mapie i ma charakter orientacyjny — przed wpisaniem do dokumentów potwierdź go na słupku.</span>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script>
+// [nr, przebieg, km, ocena, miejscowości]
+const ROADS=[
+["1396N","Sępopol – Lwowiec – Michałkowo",11.921,2.74,"Sępopol,Lwowiec,Michałkowo"],
+["1398N","Sątoczno – Skandawa – dr. woj. 591 Kotki",4.631,2.37,"Sątoczno,Skandawa,Kotki"],
+["1404N","Paluzy – Grzęda – Reszel",4.077,2.09,"Paluzy,Grzęda,Reszel"],
+["1567N","Szczurkowo – Wodukajmy – Sępopol – Glitajny",10.842,2.52,"Szczurkowo,Wodukajmy,Sępopol,Glitajny"],
+["1573N","Dr. woj. 592 – Grzęda – Sątopy-Samulewo",1.591,2.06,"Grzęda,Sątopy-Samulewo"],
+["1580N","Studzieniec – Korsze – Równina Górna",13.948,3.85,"Studzieniec,Korsze,Równina Górna"],
+["1581N","Dzietrzychowo – Drogosze – Kiemławki Wielkie",19.603,3.78,"Dzietrzychowo,Drogosze,Kiemławki Wielkie"],
+["1582N","Tołkiny – Filipówka (dr. woj. 594)",7.84,3.22,"Tołkiny,Filipówka"],
+["1584N","Dr. woj. 592 – Jeżewo – Winda – Jankowice – Srokowo",19.502,3.26,"Jeżewo,Winda,Jankowice,Srokowo"],
+["1586N","Gałwuny – Borki – Skierki (dr. woj. 591)",7.477,2.01,"Gałwuny,Borki,Skierki"],
+["1588N","Dr. 1727N (Nowa Różanka) – Szczeciniak – Solanka",6.375,2.14,"Nowa Różanka,Szczeciniak,Solanka"],
+["1590N","Rodele – Ogródki – Srokowo",10.612,3.35,"Rodele,Ogródki,Srokowo"],
+["1592N","Barciany – Ogródki",4.435,2.46,"Barciany,Ogródki"],
+["1594N","Jegławki – Wilczyny",4.02,2.00,"Jegławki,Wilczyny"],
+["1596N","Bajory Wielkie – Wyskok",2.64,2.11,"Bajory Wielkie,Wyskok"],
+["1598N","Bajory Małe – Marszałki – Guja – Prynowo – Wilkowo",3.44,2.00,"Bajory Małe,Marszałki,Guja,Prynowo,Wilkowo"],
+["1600N","Wysoka Góra – Karłowo – dr. 1799N",1.75,1.89,"Wysoka Góra,Karłowo"],
+["1602N","Dr. woj. 650 – Lesieniec – Surwile – Kamionek Wielki – Pozezdrze",3.626,2.91,"Lesieniec,Surwile,Kamionek Wielki,Pozezdrze"],
+["1606N","Karolewo – Parcz",7.745,4.19,"Karolewo,Parcz"],
+["1608N","Wopławki – Czerniki",2.8,2.05,"Wopławki,Czerniki"],
+["1610N","Reszel – Pudwągi",9.151,3.01,"Reszel,Pudwągi"],
+["1612N","Pieckowo – Wanguty – Muławki",6.774,1.76,"Pieckowo,Wanguty,Muławki"],
+["1614N","Dr. woj. 591 – Pręgowo – Sławkowo",5.138,2.10,"Pręgowo,Sławkowo"],
+["1618N","Szestno – Nakomiady",5.655,3.52,"Szestno,Nakomiady"],
+["1624N","Samławki – Leginy",2.378,2.88,"Samławki,Leginy"],
+["1626N","Widryny – dr. 1699N",5.035,1.95,"Widryny"],
+["1628N","Dr. woj. 590 – Pilec",6.261,3.49,"Pilec"],
+["1685N","Sątoczno – Dłużec Wielki",5.274,3.00,"Sątoczno,Dłużec Wielki"],
+["1687N","Łankiejmy – Gudniki – (dr. woj. 590)",10.586,3.28,"Łankiejmy,Gudniki"],
+["1689N","Kraskowo – Babieniec",3.464,2.83,"Kraskowo,Babieniec"],
+["1691N","Dzikowina – Reszel",9.487,3.55,"Dzikowina,Reszel"],
+["1693N","Reszel – Mnichowo",1.415,4.37,"Reszel,Mnichowo"],
+["1695N","Dr. 1624N – Łężany",1.812,2.52,"Łężany"],
+["1697N","Dr. woj. 590 – Widryny – Śpiglówka",4.45,4.19,"Widryny,Śpiglówka"],
+["1699N","Święta Lipka – Szestno",6.422,4.30,"Święta Lipka,Szestno"],
+["1701N","Garbno – Skandawa",5.264,4.05,"Garbno,Skandawa"],
+["1703N","Skandawa – Krymławki",6.605,2.45,"Skandawa,Krymławki"],
+["1705N","Warnikajmy – Garbno",4.989,3.02,"Warnikajmy,Garbno"],
+["1707N","Drogosze – Garbno",8.794,2.77,"Drogosze,Garbno"],
+["1709N","Linkowo – Siemki",3.171,4.80,"Linkowo,Siemki"],
+["1711N","Aptynty – Asuny – Święty Kamień – Wilczyny – Srokowo (dr. 1725N)",23.746,4.19,"Aptynty,Asuny,Święty Kamień,Wilczyny,Srokowo"],
+["1713N","Mołtajny – Barciany",9.115,3.80,"Mołtajny,Barciany"],
+["1715N","Gęsiki – Barciany",1.792,3.53,"Gęsiki,Barciany"],
+["1717N","Suchawa – DP 1725N (od 01.01.2021 droga gminna)",2.4,4.60,"Suchawa"],
+["1719N","Dr. 1725N – Ogródki – Jankowice",5.023,2.82,"Ogródki,Jankowice"],
+["1721N","Barciany – Taborzec – Skoczewo",5.135,2.52,"Barciany,Taborzec,Skoczewo"],
+["1723N","Dr. 1711N – Brzeźnica – Wysoka Góra",15.986,3.51,"Brzeźnica,Wysoka Góra"],
+["1725N","Barciany – Srokowo",12.603,3.07,"Barciany,Srokowo"],
+["1727N","Winda – Nowa Różanka",6.424,2.35,"Winda,Nowa Różanka"],
+["1728N","Dr. 1729N – Kronowo – Sterławki Wielkie – Tros",2.5,2.00,"Kronowo,Sterławki Wielkie,Tros"],
+["1729N","Suchodoły – Parcz – Pożarki – Nakomiady",15.601,2.53,"Suchodoły,Parcz,Pożarki,Nakomiady"],
+["1731N","Gierłoż – Kwiedzina",5.164,2.18,"Gierłoż,Kwiedzina"],
+["1733N","Kętrzyn – Nakomiady – Ryn",12.762,2.58,"Kętrzyn,Nakomiady,Ryn"],
+["1735N","Kętrzyn – Sławkowo – Nakomiady",12.626,3.18,"Kętrzyn,Sławkowo,Nakomiady"],
+["1737N","Dr. 1618N – Koczarki – Krzyżany",3.238,3.16,"Koczarki,Krzyżany"],
+["1799N","Perły (dr. woj. 63) – Przystań – Radzieje – Suchodoły – dr. woj. 650",4.323,2.58,"Perły,Przystań,Radzieje,Suchodoły"],
+["1968N","Święta Lipka – Wilkowo – Gronowo – dr. 1618N",10.768,2.62,"Święta Lipka,Wilkowo,Gronowo"],
+["1980N","Krelikiejmy – Kotki",8.913,2.47,"Krelikiejmy,Kotki"],
+["1981N","Dr. woj. 592 (Sporwiny) – Sątoczno",3.888,2.16,"Sporwiny,Sątoczno"],
+["1985N","Momajny – Skandawa",4.491,3.57,"Momajny,Skandawa"],
+["1987N","Jeżewo – Kotkowo",3.089,2.90,"Jeżewo,Kotkowo"],
+["1989N","Głowbity – Łankiejmy",3.78,2.69,"Głowbity,Łankiejmy"]
+];
+// [miasto, nr, ulica, km, ocena]
+const STREETS=[
+["Kętrzyn","3803N","Budowlana",.746,4.90],["Kętrzyn","3811N","Górna",.553,4.69],["Kętrzyn","3875N","Wojska Polskiego",.581,4.44],
+["Reszel","3931N","Bez nazwy",.062,2.00],["Reszel","3896N","Bohaterów",.207,4.00],["Reszel","3897N","Chopina",.21,2.61],["Reszel","3898N","Chrobrego",.145,4.86],["Reszel","3899N","Dąbrowskiego",.355,4.26],["Reszel","3900N","Gałczyńskiego",.57,3.55],["Reszel","3901N","Gen. Zajączka",.283,2.00],["Reszel","3902N","Jagiełły",.19,4.57],["Reszel","3904N","Kochanowskiego",.225,2.22],["Reszel","3905N","Kolejowa",.44,2.11],["Reszel","3906N","Konopnickiej",.195,2.89],["Reszel","3907N","Kopernika",.31,4.30],["Reszel","3908N","Krasickiego",.32,2.22],["Reszel","3909N","Kraszewskiego",.175,3.00],["Reszel","3932N","Krótka",.09,4.00],["Reszel","3910N","Księcia Witolda",.078,4.00],["Reszel","3911N","Łukasińskiego",.345,2.00],["Reszel","3912N","Mazurska",.28,4.69],["Reszel","3913N","Mickiewicza",.26,2.27],["Reszel","3914N","Norwida",.19,2.00],["Reszel","3915N","Nowa",.085,3.00],["Reszel","3934N","Paderewskiego",.045,4.00],["Reszel","3935N","Pieniężnego",.56,2.24],["Reszel","3918N","Płowce",.435,3.04],["Reszel","3919N","Podmiejska",.28,2.00],["Reszel","3921N","Polna",.38,2.64],["Reszel","3936N","Racławicka",1.074,2.05],["Reszel","3937N","Rataja",.15,3.40],["Reszel","3922N","Reymonta",.175,4.00],["Reszel","3924N","Sienkiewicza",.085,4.00],["Reszel","3926N","Spichrzowa",.135,3.00],["Reszel","3927N","Wojska Polskiego",.34,2.45],["Reszel","3928N","Wyspiańskiego",.073,4.00],["Reszel","3929N","Zientary-Malewskiej",.255,3.83],["Reszel","3930N","Zwycięzców",.22,3.95],["Reszel","3895N","1 Maja",.744,4.68],
+["Korsze","1580N","Kościuszki",.755,3.85],["Korsze","1580N","Szkolna",1.735,3.85],["Korsze","1580N","Wolności",1.41,3.85],["Korsze","3883N","Kopernika",.24,4.00],["Korsze","3884N","Nowy Świat",.1,2.90],["Korsze","3885N","Ogrodowa",.655,2.28],["Korsze","3886N","Elizy Orzeszkowej",.82,2.46],["Korsze","3887N","Powstańców",.21,2.10],["Korsze","3888N","Racławicka",.29,4.59],["Korsze","3889N","Słoneczna",.276,4.76],["Korsze","3891N","Wiejska",.579,4.39],["Korsze","3892N","Wileńska",.609,2.23],["Korsze","3893N","Zielona",.206,4.88],["Korsze","3894N","Zwycięzców",.284,4.58],["Korsze","1580N","Wylotowa",.937,3.85]
+];
+
+const norm=s=>s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/ł/g,"l").replace(/\s+/g," ").trim();
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt=n=>n.toLocaleString("pl-PL",{minimumFractionDigits:3,maximumFractionDigits:3});
+const fmt2=n=>n.toLocaleString("pl-PL",{minimumFractionDigits:2,maximumFractionDigits:2});
+const GM_REGION=", powiat kętrzyński";
+
+const items=[
+ ...ROADS.map((r,ix)=>({id:"r"+ix,kind:"poza",nr:r[0],title:r[1],km:r[2],ocena:r[3],places:r[4].split(","),meta:"Droga powiatowa"})),
+ ...STREETS.map((s,ix)=>({id:"s"+ix,kind:s[0],nr:s[1],title:"ul. "+s[2],street:s[2],km:s[3],ocena:s[4],places:[s[0]],meta:"Ulica powiatowa · "+s[0]}))
+];
+items.forEach(i=>i.hay=norm([i.nr,i.title,i.places.join(" "),i.meta].join(" ")));
+const allPlaces=[...new Set(ROADS.flatMap(r=>r[4].split(",")).concat(["Reszel","Korsze","Kętrzyn"]))].sort((a,b)=>a.localeCompare(b,"pl"));
+document.getElementById("places").innerHTML=allPlaces.map(p=>`<option value="${esc(p)}">`).join("");
+
+function gmLinkFor(i){
+  if(i.street) return "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent("ul. "+i.street+", "+i.places[0]);
+  const p=i.places;
+  if(p.length>1) return "https://www.google.com/maps/dir/?api=1&travelmode=driving&origin="+encodeURIComponent(p[0]+GM_REGION)+"&destination="+encodeURIComponent(p[p.length-1]+GM_REGION)+(p.length>2?"&waypoints="+encodeURIComponent(p.slice(1,-1).map(x=>x+GM_REGION).join("|")):"");
+  return "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(p[0]+GM_REGION);
+}
+function condHTML(o){
+  if(o==null)return `<span class="cond c-none">ocena: —</span>`;
+  const c=o>=4?"c-good":o>=3?"c-mid":"c-bad";
+  return `<span class="cond ${c}" title="Ocena stanu drogi (1–5)">stan ${fmt2(o)}</span>`;
+}
+function highlight(text,q){
+  if(!q)return esc(text);
+  const idx=norm(text).indexOf(q);
+  if(idx<0)return esc(text);
+  return esc(text.slice(0,idx))+"<mark>"+esc(text.slice(idx,idx+q.length))+"</mark>"+esc(text.slice(idx+q.length));
+}
+let selected=null;
+function rowHTML(i,q){
+  return `<div class="row${selected===i.id?" sel":""}" data-id="${i.id}"><span class="plate">${esc(i.nr)}</span><div class="txt"><div class="route">${highlight(i.title,q)}</div><div class="meta">${esc(i.meta)} · ${fmt(i.km)} km</div></div><div class="acts">${condHTML(i.ocena)}<button class="btn ghost small" type="button" data-show="${i.id}">Na mapie</button><a class="btn ghost small" href="${gmLinkFor(i)}" target="_blank" rel="noopener">Mapy Google</a></div></div>`;
+}
+
+let filter="all";
+const qEl=document.getElementById("q"),list=document.getElementById("list"),count=document.getElementById("count");
+function score(i,q){if(norm(i.nr)===q)return 3;if(i.places.some(p=>norm(p)===q))return 2;return 1}
+function render(){
+  const q=norm(qEl.value);
+  let res=items.filter(i=>filter==="all"||i.kind===filter);
+  if(q){res=res.filter(i=>i.hay.includes(q));res.sort((a,b)=>score(b,q)-score(a,q))}
+  count.textContent=q?`Znaleziono: ${res.length} dla „${qEl.value.trim()}”`:`${res.length} pozycji z tabeli ZDP`;
+  list.innerHTML=res.length?res.map(i=>rowHTML(i,q)).join(""):`<div class="empty">Brak drogi powiatowej dla tej nazwy. Sprawdź pisownię albo użyj GPS — rozpozna też drogi wojewódzkie i krajowe.</div>`;
+}
+qEl.addEventListener("input",render);
+document.querySelectorAll(".chip").forEach(c=>c.addEventListener("click",()=>{
+  filter=c.dataset.f;
+  document.querySelectorAll(".chip").forEach(x=>x.setAttribute("aria-pressed",String(x===c)));
+  render();
+}));
+render();
+
+// ===== Mapa =====
+const mapNote=document.getElementById("mapnote");
+function note(t){mapNote.textContent=t;mapNote.hidden=!t}
+let map=null,posMarker=null,accCircle=null,hitLayer=null,roadLayer=null,tileErrors=0;
+const CSS=getComputedStyle(document.documentElement);
+const col=n=>CSS.getPropertyValue(n).trim()||"#e2582b";
+if(window.L){
+  map=L.map("map",{zoomControl:true,attributionControl:true}).setView([54.076,21.375],10);
+  const tl=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'}).addTo(map);
+  tl.on("tileerror",()=>{if(++tileErrors===3)note("Mapa się nie wczytuje. Działa w zainstalowanej aplikacji drogiNKE z dostępem do internetu.")});
+  tl.on("tileload",()=>{if(tileErrors<3)note("")});
+}else{
+  note("Nie udało się wczytać mapy. Sprawdź połączenie z internetem.");
+}
+
+// ===== Przebieg drogi z listy =====
+const BBOX="53.85,20.85,54.45,22.0";
+const geomCache=new Map();
+async function showRoad(i){
+  selected=i.id;render();
+  document.querySelector(".mapbox").scrollIntoView({behavior:"smooth",block:"start"});
+  if(!map)return;
+  note("Szukam drogi "+i.nr+" na mapie…");
+  try{
+    let ways=geomCache.get(i.nr);
+    if(!ways){
+      const d=await overpass(`[out:json][timeout:25];way["highway"]["ref"~"(^|;) *${i.nr} *(;|$)"](${BBOX});out geom;`);
+      ways=(d.elements||[]).filter(w=>w.geometry).map(w=>({line:w.geometry.map(g=>[g.lat,g.lon]),name:(w.tags||{}).name||""}));
+      geomCache.set(i.nr,ways);
+    }
+    if(roadLayer)roadLayer.remove();
+    if(i.street){const f=ways.filter(w=>w.name&&norm(w.name).includes(norm(i.street)));if(f.length)ways=f}
+    if(!ways.length){note("Drogi "+i.nr+" nie ma w OpenStreetMap. Użyj przycisku Mapy Google.");return}
+    roadLayer=L.featureGroup(ways.map(w=>L.polyline(w.line,{color:col("--route"),weight:6,opacity:.9}))).addTo(map);
+    roadLayer.bindTooltip(i.nr,{sticky:true});
+    map.fitBounds(roadLayer.getBounds(),{padding:[30,30],maxZoom:16});
+    note("");
+  }catch(e){note("Nie udało się pobrać przebiegu drogi. Sprawdź internet albo użyj przycisku Mapy Google.")}
+}
+list.addEventListener("click",e=>{
+  const b=e.target.closest("[data-show]");if(!b)return;
+  const i=items.find(x=>x.id===b.dataset.show);if(i)showRoad(i);
+});
+
+// ===== GPS =====
+const gpsBtn=document.getElementById("gps"),out=document.getElementById("gpsout"),followEl=document.getElementById("follow");
+function plateFor(ref){
+  const r=ref.replace(/^(DK|DW)\s*/i,"").trim();
+  if(/^S\s?\d+/i.test(r)||/^A\s?\d+/i.test(r)||/^\d{1,2}$/.test(r))return ["dk",r,"Droga krajowa"];
+  if(/^\d{3}$/.test(r))return ["dw",r,"Droga wojewódzka"];
+  if(/^\d{4}N$/i.test(r))return ["",r.toUpperCase(),"Droga powiatowa"];
+  if(/^\d{6}N$/i.test(r))return ["other",r.toUpperCase(),"Droga gminna"];
+  return ["other",r,"Droga"];
+}
+// rzut punktu na odcinek: odległość [m] i położenie t (0..1)
+function proj(p,a,b){
+  const k=Math.cos(p.lat*Math.PI/180),xy=o=>[o.lon*111320*k,o.lat*110540];
+  const [px,py]=xy(p),[ax,ay]=xy(a),[bx,by]=xy(b);
+  const dx=bx-ax,dy=by-ay,L2=dx*dx+dy*dy;
+  let t=L2?((px-ax)*dx+(py-ay)*dy)/L2:0;t=Math.max(0,Math.min(1,t));
+  return {d:Math.hypot(px-(ax+t*dx),py-(ay+t*dy)),t};
+}
+const distToSeg=(p,a,b)=>proj(p,a,b).d;
+function hav(a,b){
+  const R=6371008.8,r=Math.PI/180,dLa=(b.lat-a.lat)*r,dLo=(b.lon-a.lon)*r;
+  const h=Math.sin(dLa/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLo/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h));
+}
+
+// ===== Kilometraż dróg wojewódzkich =====
+// Początek kilometrażu (km 0+000) odczytany z mapy ZDW Olsztyn (stan 12.01.2026).
+// Punkt "start" służy tylko do wybrania właściwego końca drogi.
+const DW_KM={
+  "590":{start:{lat:54.222,lon:21.345},opis:"km 0 przy DW591 koło Barcian, rośnie w stronę Korsz i Reszla"},
+  "591":{start:{lat:54.420,lon:21.300},opis:"km 0 na granicy państwa, rośnie na południe do Mrągowa"},
+  "592":{start:{lat:54.255,lon:20.800},opis:"km 0 w Bartoszycach, rośnie na wschód przez Korsze i Kętrzyn"},
+  "594":{start:{lat:54.087,lon:20.900},opis:"km 0 w Bisztynku, rośnie na wschód przez Reszel do Kętrzyna"},
+  "650":{start:{lat:54.120,lon:21.395},opis:"km 0 przy DW591 na północ od Kętrzyna, rośnie przez Srokowo"},
+  "642":{start:{lat:54.020,lon:21.565},opis:"km 0 przy DW592 koło Kalinowa, rośnie na południe przez Ryn"}
+};
+const WM_BBOX="53.10,19.10,54.50,23.00";
+const OVERPASS=["https://overpass-api.de/api/interpreter","https://overpass.kumi.systems/api/interpreter"];
+async function overpass(q,useGet){
+  let lastErr;
+  for(const url of OVERPASS){
+    try{
+      const r=useGet?await fetch(url+"?data="+encodeURIComponent(q)):await fetch(url,{method:"POST",body:"data="+encodeURIComponent(q),headers:{"Content-Type":"application/x-www-form-urlencoded"}});
+      if(!r.ok)throw new Error("HTTP "+r.status);
+      return await r.json();
+    }catch(e){lastErr=e}
+  }
+  throw lastErr;
+}
+class Heap{constructor(){this.a=[]}push(x){const a=this.a;a.push(x);let i=a.length-1;while(i>0){const p=(i-1)>>1;if(a[p][0]<=a[i][0])break;[a[p],a[i]]=[a[i],a[p]];i=p}}pop(){const a=this.a,top=a[0],last=a.pop();if(a.length){a[0]=last;let i=0;for(;;){const l=2*i+1,r=l+1;let m=i;if(l<a.length&&a[l][0]<a[m][0])m=l;if(r<a.length&&a[r][0]<a[m][0])m=r;if(m===i)break;[a[m],a[i]]=[a[i],a[m]];i=m}}return top}get size(){return this.a.length}}
+const routeCache=new Map();
+async function loadRoute(ref){
+  if(routeCache.has(ref))return routeCache.get(ref);
+  const pr=(async()=>{
+    const d=await overpass(`[out:json][timeout:60];way["highway"]["ref"~"(^|;) *${ref} *(;|$)"](${WM_BBOX});out geom;`,true);
+    const ids=new Map(),pts=[],adj=[],segs=[];
+    const id=g=>{const k=g.lat.toFixed(6)+","+g.lon.toFixed(6);let i=ids.get(k);if(i==null){i=pts.length;ids.set(k,i);pts.push({lat:g.lat,lon:g.lon});adj.push([])}return i};
+    for(const w of d.elements||[]){
+      if(!w.geometry)continue;
+      for(let j=1;j<w.geometry.length;j++){
+        const a=id(w.geometry[j-1]),b=id(w.geometry[j]);if(a===b)continue;
+        const len=hav(pts[a],pts[b]);adj[a].push([b,len]);adj[b].push([a,len]);segs.push([a,b,len]);
+      }
+    }
+    if(!pts.length)throw new Error("brak drogi");
+    const cfg=DW_KM[ref];
+    let start=0,best=Infinity;
+    const ends=pts.map((p,i)=>i).filter(i=>adj[i].length===1);
+    for(const i of (ends.length?ends:pts.map((p,i)=>i))){const dd=hav(pts[i],cfg.start);if(dd<best){best=dd;start=i}}
+    const dist=new Float64Array(pts.length).fill(Infinity);dist[start]=0;
+    const h=new Heap();h.push([0,start]);
+    while(h.size){const [dc,u]=h.pop();if(dc>dist[u])continue;for(const [v,l] of adj[u]){const nd=dc+l;if(nd<dist[v]){dist[v]=nd;h.push([nd,v])}}}
+    let total=0;for(const x of dist)if(x<Infinity&&x>total)total=x;
+    return {pts,segs,dist,total};
+  })();
+  routeCache.set(ref,pr);
+  pr.catch(()=>routeCache.delete(ref));
+  return pr;
+}
+function chainageAt(route,p){
+  let best=null;
+  for(const [a,b,len] of route.segs){
+    const r=proj(p,route.pts[a],route.pts[b]);
+    if(!best||r.d<best.d){
+      const c=Math.min(route.dist[a]+r.t*len,route.dist[b]+(1-r.t)*len);
+      best={d:r.d,c};
+    }
+  }
+  return best;
+}
+// korekty ze słupków wpisane przez użytkownika (zapamiętane w telefonie)
+function loadCal(){try{return JSON.parse(localStorage.getItem("drogiNKE-kal")||"{}")}catch(e){return{}}}
+function saveCal(c){try{localStorage.setItem("drogiNKE-kal",JSON.stringify(c))}catch(e){}}
+function corrected(ref,chainKm){
+  const pts=(loadCal()[ref]||[]).slice().sort((a,b)=>a.c-b.c);
+  if(!pts.length)return {km:chainKm,cal:false};
+  // przesunięcie interpolowane między punktami kontrolnymi
+  let off;
+  if(chainKm<=pts[0].c)off=pts[0].km-pts[0].c;
+  else if(chainKm>=pts[pts.length-1].c)off=pts[pts.length-1].km-pts[pts.length-1].c;
+  else{for(let i=1;i<pts.length;i++)if(chainKm<=pts[i].c){const A=pts[i-1],B=pts[i],t=(chainKm-A.c)/(B.c-A.c);off=(A.km-A.c)*(1-t)+(B.km-B.c)*t;break}}
+  const near=pts.reduce((m,x)=>Math.min(m,Math.abs(x.c-chainKm)),Infinity);
+  return {km:chainKm+off,cal:true,near};
+}
+const kmFmt=km=>{const m=Math.max(0,Math.round(km*1000/100)*100);return Math.floor(m/1000)+"+"+String(m%1000).padStart(3,"0")};
+
+function msg(html){out.innerHTML=`<div class="note">${html}</div>`}
+let lastQuery=null,lastQueryAt=0,busy=false,watchId=null,wakeLock=null,last=null;
+
+function drawPosition(p,acc){
+  if(!map)return;
+  const ll=[p.lat,p.lon];
+  if(!posMarker){
+    accCircle=L.circle(ll,{radius:acc,color:col("--accent"),weight:1,fillOpacity:.12}).addTo(map);
+    posMarker=L.circleMarker(ll,{radius:8,color:"#fff",weight:3,fillColor:col("--accent"),fillOpacity:1}).addTo(map);
+  }else{posMarker.setLatLng(ll);accCircle.setLatLng(ll).setRadius(acc)}
+  if(!followEl.checked||!map.getBounds().pad(-0.2).contains(ll)) map.setView(ll,Math.max(map.getZoom(),15));
+}
+
+function noteText(){
+  if(!last)return "";
+  const d=new Date();
+  const when=d.toLocaleDateString("pl-PL")+" "+d.toLocaleTimeString("pl-PL",{hour:"2-digit",minute:"2-digit"});
+  let road=last.kind+(last.ref?" nr "+last.ref:"");
+  if(last.name)road+=" ("+last.name+")";
+  const parts=[road];
+  if(last.km!=null)parts.push("km "+kmFmt(last.km)+(last.cal?" (wg korekty ze słupka)":" (orientacyjnie)"));
+  if(last.place)parts.push("m. "+last.place+(last.placeDist!=null?" (ok. "+(last.placeDist<1000?Math.round(last.placeDist/10)*10+" m":(last.placeDist/1000).toFixed(1).replace(".",",")+" km")+")":""));
+  parts.push("GPS: "+last.p.lat.toFixed(5)+", "+last.p.lon.toFixed(5)+" (±"+Math.round(last.acc)+" m)");
+  parts.push(when);
+  return parts.join(", ");
+}
+async function copyNote(btn){
+  const t=noteText();
+  try{await navigator.clipboard.writeText(t);btn.textContent="Skopiowano"}
+  catch(e){const ta=document.getElementById("notebox");ta.hidden=false;ta.value=t;ta.focus();ta.select();btn.textContent="Zaznacz i skopiuj tekst poniżej"}
+  setTimeout(()=>{btn.textContent="Kopiuj do notatki"},2500);
+}
+
+function renderHit(top){
+  const gm=`https://www.google.com/maps/search/?api=1&query=${last.p.lat.toFixed(6)},${last.p.lon.toFixed(6)}`;
+  const rows=top.map((w,ix)=>{
+    const refs=(w.tags.ref||"").split(";").map(s=>s.trim()).filter(Boolean);
+    const plates=refs.length?refs.map(r=>{const [c,t]=plateFor(r);return `<span class="plate ${c}">${esc(t)}</span>`}).join(" "):`<span class="plate other">—</span>`;
+    const kind=refs.length?plateFor(refs[0])[2]:"Droga bez numeru";
+    const local=refs.map(r=>items.find(i=>i.nr===r.toUpperCase())).find(Boolean);
+    const extra=local?`<div class="meta">${esc(local.title)} · ${fmt(local.km)} km${local.ocena!=null?" · stan "+fmt2(local.ocena):""}</div>`:"";
+    let kmLine="";
+    if(ix===0&&last.kmState==="load")kmLine=`<div class="km">Liczę kilometr…</div>`;
+    if(ix===0&&last.kmState==="ok")kmLine=`<div class="km"><span class="kmv">km ${kmFmt(last.km)}</span> <span class="kmtag ${last.cal?"cal":""}">${last.cal?"wg korekty ze słupka":"orientacyjnie ±0,5 km"}</span></div><div class="meta">${esc(DW_KM[last.ref].opis)} · długość drogi wg mapy ok. ${(last.total/1000).toFixed(1).replace(".",",")} km</div>`;
+    if(ix===0&&last.kmState==="err")kmLine=`<div class="meta">Nie udało się policzyć kilometra (brak danych mapy).</div>`;
+    if(ix===0&&last.kmState==="none"&&last.ref&&/^\d{3}$/.test(last.ref))kmLine=`<div class="meta">Dla tej drogi nie mam jeszcze początku kilometrażu.</div>`;
+    return `<div class="hit">${plates}<div class="txt"><div class="route">${ix===0?"Jesteś na: ":"Obok: "}${esc(kind)}${w.tags.name?" · "+esc(w.tags.name):""}</div>${kmLine}${extra}<div class="meta">ok. ${Math.round(w.d)} m od Ciebie</div></div></div>`;
+  }).join("");
+  const place=last.place?`<div class="note">W pobliżu: <b>${esc(last.place)}</b>${last.placeDist!=null?" (ok. "+(last.placeDist<1000?Math.round(last.placeDist/10)*10+" m":(last.placeDist/1000).toFixed(1).replace(".",",")+" km")+")":""}</div>`:"";
+  const calBtn=last.kmState==="ok"?`<button class="btn ghost small" type="button" id="calbtn">Koryguj ze słupka</button>`:"";
+  out.innerHTML=rows+place+`<div class="btns"><button class="btn small" type="button" id="copybtn">Kopiuj do notatki</button>${calBtn}<a class="btn ghost small" href="${gm}" target="_blank" rel="noopener">Mapy Google</a></div>
+  <form class="calform" id="calform" hidden><label for="calkm">Odczyt z najbliższego słupka (km), np. 27,3</label><div class="btns"><input id="calkm" inputmode="decimal" autocomplete="off" placeholder="27,3"><button class="btn small" type="submit">Zapisz korektę</button></div><div class="note">Stań przy słupku i wpisz jego wartość. Aplikacja zapamięta poprawkę dla drogi ${esc(last.ref||"")} na tym telefonie.</div></form>
+  <textarea id="notebox" rows="3" hidden aria-label="Tekst do notatki"></textarea>
+  <div class="note">Pozycja ${last.p.lat.toFixed(5)}, ${last.p.lon.toFixed(5)} (±${Math.round(last.acc)} m)</div>`;
+  document.getElementById("copybtn").addEventListener("click",e=>copyNote(e.currentTarget));
+  const cb=document.getElementById("calbtn"),cf=document.getElementById("calform");
+  if(cb)cb.addEventListener("click",()=>{cf.hidden=!cf.hidden;if(!cf.hidden)document.getElementById("calkm").focus()});
+  cf.addEventListener("submit",e=>{
+    e.preventDefault();
+    const v=parseFloat(document.getElementById("calkm").value.replace(",","."));
+    if(!(v>=0&&v<400)||last.chainKm==null)return;
+    const c=loadCal();(c[last.ref]=c[last.ref]||[]);
+    c[last.ref]=c[last.ref].filter(x=>Math.abs(x.c-last.chainKm)>0.3);
+    c[last.ref].push({c:last.chainKm,km:v});saveCal(c);
+    const r=corrected(last.ref,last.chainKm);last.km=r.km;last.cal=r.cal;renderHit(last.top);
+  });
+}
+
+async function identify(p,acc){
+  if(busy)return;
+  const now=Date.now();
+  if(lastQuery&&hav(p,lastQuery)<50&&now-lastQueryAt<60000&&out.querySelector(".hit"))return;
+  busy=true;lastQuery=p;lastQueryAt=now;
+  try{
+    const d=await overpass(`[out:json][timeout:20];(way(around:60,${p.lat},${p.lon})["highway"]["highway"!~"footway|path|cycleway|steps|pedestrian|track|service|bridleway|corridor|construction|proposed"];);out tags geom;node(around:4000,${p.lat},${p.lon})["place"~"^(city|town|village|hamlet)$"];out;`);
+    const els=d.elements||[];
+    const ways=els.filter(w=>w.type==="way"&&w.geometry&&w.geometry.length>1).map(w=>{
+      let dist=Infinity;for(let i=1;i<w.geometry.length;i++)dist=Math.min(dist,distToSeg(p,w.geometry[i-1],w.geometry[i]));
+      return {tags:w.tags||{},d:dist,line:w.geometry.map(g=>[g.lat,g.lon])};
+    }).sort((a,b)=>a.d-b.d);
+    const places=els.filter(n=>n.type==="node"&&n.tags&&n.tags.name).map(n=>({name:n.tags.name,d:hav(p,n)})).sort((a,b)=>a.d-b.d);
+    if(!ways.length){msg("W promieniu 60 m nie ma drogi w OpenStreetMap. Podejdź bliżej drogi i spróbuj ponownie.");return}
+    const seen=new Set(),uniq=[];
+    for(const w of ways){const key=(w.tags.ref||"")+"|"+(w.tags.name||"");if(!seen.has(key)){seen.add(key);uniq.push(w)}}
+    const top=uniq.slice(0,3),best=top[0];
+    const refs=(best.tags.ref||"").split(";").map(s=>s.trim()).filter(Boolean);
+    const dwRef=refs.find(r=>DW_KM[r.replace(/^DW\s*/i,"")]);
+    const ref0=dwRef?dwRef.replace(/^DW\s*/i,""):(refs[0]||"");
+    last={p,acc,top,ref:ref0,kind:refs.length?plateFor(refs[0])[2]:"Droga bez numeru",name:best.tags.name||"",place:places[0]?places[0].name:"",placeDist:places[0]?places[0].d:null,km:null,chainKm:null,cal:false,kmState:dwRef?"load":"none"};
+    if(map){
+      if(hitLayer)hitLayer.remove();
+      const same=ways.filter(w=>(w.tags.ref||"")===(best.tags.ref||"")&&(w.tags.name||"")===(best.tags.name||""));
+      hitLayer=L.featureGroup(same.map(w=>L.polyline(w.line,{color:col("--route"),weight:7,opacity:.85}))).addTo(map);
+      if(best.tags.ref)hitLayer.bindTooltip(best.tags.ref.split(";")[0],{permanent:true,direction:"top"});
+    }
+    renderHit(top);
+    if(dwRef){
+      const cur=last;
+      try{
+        const route=await loadRoute(ref0);
+        const ch=chainageAt(route,p);
+        if(cur!==last)return;
+        cur.chainKm=ch.c/1000;cur.total=route.total;
+        const r=corrected(ref0,cur.chainKm);cur.km=r.km;cur.cal=r.cal&&r.near<2;
+        cur.kmState="ok";
+      }catch(e){if(cur===last)cur.kmState="err"}
+      if(cur===last)renderHit(cur.top);
+    }
+  }catch(e){
+    msg("Nie udało się pobrać danych mapy. Rozpoznawanie drogi potrzebuje internetu i działa w zainstalowanej aplikacji drogiNKE.");
+  }finally{busy=false}
+}
+function onPos(pos){
+  const p={lat:pos.coords.latitude,lon:pos.coords.longitude};
+  drawPosition(p,pos.coords.accuracy);
+  identify(p,pos.coords.accuracy).finally(()=>{gpsBtn.disabled=false});
+}
+function onErr(err){
+  gpsBtn.disabled=false;
+  msg(err.code===1?"Brak dostępu do lokalizacji. Zezwól aplikacji na lokalizację w ustawieniach przeglądarki lub telefonu.":"Nie udało się ustalić pozycji. Wyjdź na otwartą przestrzeń i spróbuj ponownie.");
+}
+const GEO={enableHighAccuracy:true,timeout:20000,maximumAge:5000};
+gpsBtn.addEventListener("click",()=>{
+  if(!("geolocation" in navigator)){msg("To urządzenie nie udostępnia lokalizacji.");return}
+  gpsBtn.disabled=true;lastQuery=null;msg("Ustalam pozycję…");
+  navigator.geolocation.getCurrentPosition(onPos,onErr,GEO);
+});
+followEl.addEventListener("change",async()=>{
+  if(followEl.checked){
+    if(!("geolocation" in navigator)){followEl.checked=false;msg("To urządzenie nie udostępnia lokalizacji.");return}
+    msg("Śledzę pozycję. Numer drogi i kilometr odświeżają się co ok. 50 m.");
+    watchId=navigator.geolocation.watchPosition(onPos,onErr,GEO);
+    try{wakeLock=await navigator.wakeLock?.request("screen")}catch(e){}
+  }else{
+    if(watchId!=null)navigator.geolocation.clearWatch(watchId);watchId=null;
+    try{wakeLock&&wakeLock.release()}catch(e){}wakeLock=null;
+  }
+});
+document.addEventListener("visibilitychange",async()=>{
+  if(document.visibilityState==="visible"&&followEl.checked&&!wakeLock){try{wakeLock=await navigator.wakeLock?.request("screen")}catch(e){}}
+});
+
+// ===== Instalacja na Androidzie =====
+let deferred=null;const inst=document.getElementById("install");
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferred=e;inst.hidden=false});
+inst.addEventListener("click",async()=>{if(!deferred)return;deferred.prompt();try{await deferred.userChoice}catch(e){}deferred=null;inst.hidden=true});
+if("serviceWorker" in navigator&&location.protocol==="https:"&&!/claude|anthropic/.test(location.hostname)){
+  navigator.serviceWorker.register("sw.js").catch(()=>{});
+}
+</script>
+
+</body>
+</html>
